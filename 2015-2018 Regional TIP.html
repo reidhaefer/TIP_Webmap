@@ -2,7 +2,8 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+<meta name="viewport" contenf
+t="initial-scale=1, maximum-scale=1,user-scalable=no">
 <title>2015-2018 Regional TIP</title>
 <link rel="stylesheet" href="http://js.arcgis.com/3.8/js/dojo/dijit/themes/claro/claro.css" />
 <link rel="stylesheet" href="http://js.arcgis.com/3.8/js/esri/css/esri.css" />
@@ -419,7 +420,6 @@
             });
         }
         function populateList(results) {
-			//console.log(results)
             //Populate the dropdown list box with unique values  
             var zone;
             var values = [];
@@ -454,43 +454,41 @@
         }
         // this replaces your applyLayerDef() function
         test = dijit.byId("mySelect").on("change", function() {
-            //Filter the layer to display only the selected zoning types 
-            var findTask = new esri.tasks.FindTask("http://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/TIP15_18/FeatureServer/0");
-            //Create the find parameters 
-            var findParams = new esri.tasks.FindParameters();
-            findParams.returnGeometry = true;
-            findParams.layerIds = [0];
-            findParams.searchFields = ["SponProjTitle"];
-            findParams.outSpatialReference = map.spatialReference;
-            //Find and zoom to current project
+            //Filter the layer to display only the selected zoning types
+            var queryTask2 = new esri.tasks.QueryTask("http://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/TIP15_18/FeatureServer/0");
+        //Define query parameters  
+            var query2 = new esri.tasks.Query();
+            query2.outFields = ["OBJECTID_12_13","ProjectTitle", "ProjDesc", "ProjectLocation", "ProjNo", "PlaceShortName", "TotCost", "ImproveType"];
+		    //query.orderByFields = ["SponProjTitle ASC"];
+            query2.returnGeometry = true;
             var SponProjTitle = dijit.byId("mySelect").value;
-            findParams.searchText = SponProjTitle;
-            findTask.execute(findParams, selectFeatureAndZoom);
+            query2.where = "SponProjTitle = " + "'" + SponProjTitle + "'"; 
+            query2.outSpatialReference = map.spatialReference;
+            queryTask2.execute(query2, selectFeatureAndZoom);
         });
         Tooltip.defaultPosition = ["below"];
         Tooltip.show("this is a tool tip", test.domNode);
-        function selectFeatureAndZoom(results) {
-            //This function works with an array of FindResult that the task returns 
+        
+        function selectFeatureAndZoom(featureSet) {
+            var resultFeatures = featureSet.features;
             map.graphics.clear();
             //Symbol for Selected Feature 
             var symbol = new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([255, 0, 0]), 4);
             //Add Selected Feature to Map  
-            var items = dojo.map(results, function(result) {
-                var graphic = result.feature;
-                graphic.setInfoTemplate(infoTemplate);
-                var content2 = graphic.getContent()
-                registry.byId("rightPane").set("content", content2);
-                graphic.setSymbol(symbol);
-                map.graphics.add(graphic);
-                return result.feature.attributes;
-            });
+            var graphic = resultFeatures[0];
+            graphic.setInfoTemplate(infoTemplate);
+            var content2 = graphic.getContent();
+            registry.byId("rightPane").set("content", content2);
+            graphic.setSymbol(symbol);
+            map.graphics.add(graphic);
             var selectedFeature;
             var selectedFeatureExtent;
             //loop through graphics, get the first one (there should only be one)
-            dojo.forEach(map.graphics.graphics, function(graphic) {
-                selectedFeature = graphic;
-                return;
-            });
+            //dojo.forEach(map.graphics.graphics, function(graphic) {
+            //    selectedFeature = graphic;
+            //    return;
+            //});
+            selectedFeature = map.graphics.graphics[0];
             selectedFeatureExtent = selectedFeature.geometry.getExtent();
             selectedFeatureExtent = selectedFeatureExtent.expand(1.3);
             map.setExtent(selectedFeatureExtent);
@@ -529,6 +527,9 @@
             relatedQuery.outFields = ["*"];
             relatedQuery.relationshipId = 0;
             graphicAttributes = projectGraphic.attributes;
+            console.log("here");
+            console.log(graphicAttributes);
+            
             relatedQuery.objectIds = [graphicAttributes.OBJECTID_12_13];
             tipProjs.queryRelatedFeatures(relatedQuery, function(relatedRecords) {
                 var fset = relatedRecords[graphicAttributes.OBJECTID_12_13];
@@ -645,7 +646,7 @@ function formatCost (Cost) {
         </table> 
       </div> 
    
-   <img id="loadingImg" src="/assets/14872/ajax-loader2.gif” style="position:absolute; right:50%; top:50%; z-index:100;" />
+   <img id="loadingImg" src="/assets/14872/ajax-loader2.gif" style="position:absolute; right:50%; top:50%; z-index:100;" />
    
  <div id="dialogOne" data-dojo-type="dijit.Dialog" title="Welcome to PSRC's 2015-2018 Regional TIP Web Map">
     <div data-dojo-type="dijit.layout.TabContainer" style="width: 650px; height: 575px; font-size:14px">
