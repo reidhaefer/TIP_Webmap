@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+<title>2015-2018 Regional TIP</title>
+<link rel="stylesheet" href="http://js.arcgis.com/3.8/js/dojo/dijit/themes/claro/claro.css" />
+<link rel="stylesheet" href="http://js.arcgis.com/3.8/js/esri/css/esri.css" />
+<link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Open Sans">
+
+<style type="text/css">
+    html, body {
+        height:100%;
+        width:100%;
+        margin:0;
+        padding:0;
+        margin:0;
+        font-family: "Open Sans";
+    }
+    #rightPane {
+        width:300px;
+        margin:0;
+		padding-top: 0px;
+		font-size: 12px;
+        border:none;
+        /*background-color:#E8E8E8;*/ 
+    }
+	#leftPane {
+		position: absolute;
+        width:235px;
+		font-size: 12px;
+        margin:0;
+		padding-top: 0px;
+        border:none;
+        Background-color: White;
+    }
+    #map {
+        padding:0;
+        border:None ;
+		Background-color: White;
+    }
+	#BasemapToggle {
+		position: absolute;
+		top: 120px;
+		left: 335px;
+		z-index: 50;
+	  }
+	#HomeButton {
+		position: absolute;
+		top: 120px;
+		left: 410px;
+		z-index: 50;
+      }
+	
+    #header {
+        text-align: Left;
+		font-size: 35px;
+		font-family: "Ariel bold"
+        height:80px;
+		border:none ;
+		border-bottom: Solid;
+		border-bottom-color: #a6a6a6;
+        Background-color: White;
+        color: #5a5a5a;
+    }
+    
+	#bottomPane{
+        border: none;
+        font-size: 12px;
+        width: 1000px;
+		height:150px;
+      }
+      
+	#img{
+	position: absolute;
+	top: 5px;
+	right: 40px;
+	z-index: 50;
+	
+		}
+	.ajax-loader {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    margin-left: -32px; /* -1 * image width / 2 */
+    margin-top: -32px;  /* -1 * image height / 2 */
+    display: block;     
+	}
+	
+	
+</style>
+    
+<script src="http://js.arcgis.com/3.8/"></script>
+<script>
+    require([
+    "dojo/ready",
+    "dojo/on",
+    "dojo/_base/connect",
+    "dojo/dom",
+    "dijit/registry",
+    "dojo/dom-construct",
+    "dojo/parser",
+    "dijit/layout/BorderContainer",
+    "dijit/layout/ContentPane",
+    "esri/map",
+    "esri/dijit/BasemapToggle",
+    "esri/dijit/HomeButton",
+    "esri/arcgis/utils",
+    "esri/domUtils",
+    "esri/dijit/Popup",
+    "esri/layers/FeatureLayer",
+    "esri/graphic",
+    "esri/symbols/SimpleLineSymbol",
+    "esri/renderers/SimpleRenderer",
+    "dojo/_base/Color",
+    "esri/InfoTemplate",
+    "esri/dijit/Legend",
+    "dijit/form/CheckBox",
+    "dijit/layout/AccordionContainer",
+    "esri/tasks/query",
+    "dijit/form/ComboBox",
+    "dojo/data/ItemFileReadStore",
+    "dojo/store/Memory",
+    "esri/tasks/FindTask",
+    "esri/tasks/FindParameters",
+    "dijit/Tooltip",
+    "dojox/grid/DataGrid",
+    "esri/tasks/RelationshipQuery",
+    "esri/config",
+    "esri/request",
+	"dijit/form/Button",
+	"dijit/Dialog",
+	"dijit/layout/TabContainer"
+], function(
+    ready,
+    on,
+    connect,
+    dom,
+    registry,
+    domConstruct,
+    parser,
+    BorderContainer,
+    ContentPane,
+    Map,
+    BasemapToggle,
+    HomeButton,
+    arcgisUtils,
+    domUtils,
+    Popup,
+    FeatureLayer,
+    Graphic,
+    SimpleLineSymbol,
+    SimpleRenderer,
+    Color,
+    InfoTemplate,
+    Legend,
+    CheckBox,
+    AccordionContainer,
+    query,
+    ComboBox,
+    ItemFileReadStore,
+    Memory,
+    FindTask,
+    FindParameters,
+    Tooltip,
+    DataGrid,
+    RelationshipQuery,
+    esriConfig,
+    esriRequest,
+	Button, 
+	Dialog,
+	TabContainer
+) {
+    ready(function() {
+	
+        parser.parse();
+		
+		//dijit.byId('BorderContainer').removeChild(dijit.byId('bottomPane')); 
+		//dojo.style(dijit.byId("bottomPane").domNode, "display", "hide"); 
+        	//get a reference to the element
+		var myBtn = document.getElementById('myBtn');
+		
+		//get a reference to the element
+		//dijit.byId("dialogOne").show();
+		
+		var loading = dojo.byId("loadingImg");
+		
+        var legendLayers = [];
+        var map = new Map("map", {
+            basemap: "streets",
+            center: [-122.2, 47.6],
+            //center : [-85.915,38.105],
+            zoom: 9,
+			minZoom: 8,
+			maxZoom: 17,
+			logo: false
+        });
+		
+		dojo.connect(map,"onUpdateStart",showLoading); 
+        dojo.connect(map,"onUpdateEnd",hideLoading); 
+		
+        var toggle = new BasemapToggle({
+            map: map,
+            basemap: "satellite"
+        }, "BasemapToggle");
+        toggle.startup()
+        var home = new HomeButton({
+            map: map
+        }, "HomeButton");
+        home.startup();
+        map.infoWindow.set("popupWindow", false);
+        initializeSidebar(map);
+        var commName = "stefan"
+        var sciName = "test"
+        var infoTemplate = new InfoTemplate();
+        infoTemplate.setTitle("test");
+        infoTemplate.setContent(getTextContent);
+        function getTextContent(graphic) {
+            var title = graphic.attributes.ProjectTitle;
+            var sponsor = graphic.attributes.PlaceShortName;
+            var description = graphic.attributes.ProjDesc;
+            var projID = graphic.attributes.ProjNo;
+            var location = graphic.attributes.ProjectLocation;
+            var totalCost = parseFloat(graphic.attributes.TotCost);
+            //var compYear = graphic.attributes.COMPYR;
+            var id = graphic.attributes.ProjNo;
+			var improvementType = graphic.attributes.ImproveType;
+            return "<b>" + title 
+			+ "</b><hr><b>Sponsor: </b>" + sponsor 
+			+ "<br><br>" + "<b>Project ID: </b>" + projID
+			+ "<br><br>" + "<b>Location: </b>" + location
+			+ "<br><br>" + "<b>Description: </b>" + description 
+			+ "<br><br>" + "<b>Total Project Cost: </b>" + '$' + totalCost.toLocaleString()
+			+ "<br><br>" + "<b>Improvement Type: </b>" + improvementType + "<br>"
+			+ "<br>" + "<b>See Bottom Panel For Financial Data </b>"
+			+ "<br>"
+			//+ "</b><br/> <a target='_blank' href=http://www.psrc.org/transportation/tip/tip-map/gmapcommentform.htm?" + id + "> Comment Form</a>";
+			//+ "<b>Amount Recommended: </b>" + '$' + amount.toLocaleString() 
+			//+ "<br>" + "<b>Phase: </b>" + phase 
+			// 
+			//+ "<br>" + "<b>Completion Year: </b>" + compYear + "<br>" 
+			
+        }
+           
+        //Military
+        var military = new FeatureLayer("http://webmap.psrc.org/arcgis/rest/services/PSRC_standard/military/MapServer/0",
+        {
+            mode:FeatureLayer.MODE_ONDEMAND,
+            outFields: ["*"],
+            opacity: 0.65
+            });  
+        legendLayers.push({layer:military,title:"Military Bases"});
+  
+        //MIC
+        var mic = new FeatureLayer("http://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/MIC/FeatureServer/0",
+        {
+            mode:FeatureLayer.MODE_ONDEMAND,
+            outFields: ["MIC"],
+            opacity: 0.65
+            });  
+        legendLayers.push({layer:mic,title:"Manufacturing/ Industrial Centers"});
+        
+       //RGC
+        var rgc = new FeatureLayer("http://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/centers/FeatureServer/0",
+        {
+            mode:FeatureLayer.MODE_ONDEMAND,
+            outFields: ["NAME"],
+            opacity: 0.65
+            }); 
+        legendLayers.push({layer:rgc,title:"Regional Growth Centers"});
+        
+        
+        //var symbol = new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, 4);
+        //t1t2.setRenderer(new SimpleRenderer(symbol));
+        
+           //Minority
+        var minEJ = new FeatureLayer("http://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/minority_tract_EJ_Analysis_2016/FeatureServer/0",
+        {
+            mode:FeatureLayer.MODE_ONDEMAND
+            }); 
+        legendLayers.push({layer:minEJ,title:"Minority Population"});
+        
+           //Poverty
+        var povEJ = new FeatureLayer("http://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/poverty_tract_EJ_Analysis_2016/FeatureServer/0",
+        {
+            mode:FeatureLayer.MODE_ONDEMAND
+            });    
+        legendLayers.push({layer:povEJ,title:"Concentrations of Poverty"});
+        
+        dojo.connect(map, 'onLayersAddResult', function(results) {
+            var legend = new esri.dijit.Legend({
+                map: map,
+                layerInfos: legendLayers
+            }, "legendDiv");
+            legend.startup();
+        });
+        
+        //T1T2
+        var t1t2 = new FeatureLayer("http://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/freight_t1_t2/FeatureServer/0",
+        {
+            mode:FeatureLayer.MODE_ONDEMAND,
+            outFields: ["FGTSClass"],
+            opacity: 0.55  
+            });  
+        legendLayers.push({layer:t1t2,title:"Freight Routes"});
+        
+         //congestionPM
+        var congPM = new FeatureLayer("http://webmap.psrc.org/arcgis/rest/services/congestionAMPM/MapServer/1",
+        {
+            mode:FeatureLayer.MODE_ONDEMAND,
+            outFields: ["F_VCCAT"],
+           
+            });  
+        legendLayers.push({layer:congPM,title:"Congestion- Evening"});
+        
+         //congestionAM
+        var congAM = new FeatureLayer("http://webmap.psrc.org/arcgis/rest/services/congestionAMPM/MapServer/0",
+        {
+            mode:FeatureLayer.MODE_ONDEMAND,
+            outFields: ["F_VCCAT"],
+            
+            });  
+        legendLayers.push({layer:congAM,title:"Congestion- Morning"});
+        
+      //Add other layers, 
+		var layerList = [ povEJ, minEJ, military, mic, rgc, congPM, congAM, t1t2]
+		map.addLayers(layerList)
+        //but do not make them visible
+        dojo.forEach(layerList, function(layer) {
+            layer.hide();
+        });
+		//add TIP projects here so they draw over other layers
+        var tipProjs = new FeatureLayer("http://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/TIP15_18/FeatureServer/0", {
+            mode: FeatureLayer.MODE_ONDEMAND,
+            outFields: ["*"],
+            infoTemplate: infoTemplate
+        });
+        legendLayers.push({layer:tipProjs,title:"TIP Projects"});
+		
+		var PSRCregion = new FeatureLayer("http://webmap.psrc.org/arcgis/rest/services/PSRCregion/MapServer/0", {            
+			mode:FeatureLayer.MODE_SNAPSHOT
+        });
+		map.addLayer(PSRCregion);
+		
+        var symbol = new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([0, 197, 255]), 3);
+        tipProjs.setRenderer(new SimpleRenderer(symbol));
+        var highlightSymbol = new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([204, 0, 0]), 4);
+        map.addLayer(tipProjs);
+        tipProjs.on("click", function(evt) {
+            map.graphics.clear();
+            evt.graphic.setInfoTemplate(infoTemplate);
+            var highlightGraphic = new Graphic(evt.graphic.geometry, highlightSymbol);
+            map.graphics.add(highlightGraphic);
+            var content = evt.graphic.getContent();
+            var projGraphic = evt.graphic
+            registry.byId("rightPane").set("content", content);
+            //datagrid:
+            loadDataGrid(projGraphic);
+			//dijit.byId('BorderContainer').addChild(dijit.byId('bottomPane'));
+			
+        });
+        //add check boxes  
+            console.log("here");
+            dojo.forEach(legendLayers, function(layer) {
+            var layerName = layer.title;
+            //console.log(layerName);
+            if (layerName != "TIP Projects"){
+            var checkBox = new dijit.form.CheckBox({
+                name: "checkBox" + layer.layer.id,
+                value: layer.layer.id,
+                checked: false,
+                onChange: function(evt) {
+                    var clayer = map.getLayer(this.value);
+                    clayer.setVisibility(!clayer.visible);
+                    this.checked = clayer.visible;
+                }
+            });
+			
+            //add the check box and label to the toc 
+            dojo.place(checkBox.domNode, dojo.byId("toggle"), "after");
+            var checkLabel = dojo.create('label', {
+                'for': checkBox.name,
+                innerHTML: layerName
+            }, checkBox.domNode, "after");
+            dojo.place("<br />", checkLabel, "after");
+			
+			}
+        });
+		
+        //Code below populates the ComboBox with Project Titles
+        var queryTask = new esri.tasks.QueryTask("http://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/TIP15_18/FeatureServer/0");
+        //Define query parameters  
+        var query = new esri.tasks.Query();
+        query.outFields = ["SponProjTitle"];
+		query.orderByFields = ["SponProjTitle ASC"];
+        query.returnGeometry = false;
+        query.where = "SponProjTitle <> ''"
+        queryTask.execute(query, populateList);
+        function initializeSidebar(map) {
+            var popup = map.infoWindow;
+            //when the selection changes update the side panel to display the popup info for the 
+            //currently selected feature. 
+            connect.connect(popup, "onSelectionChange", function() {
+                displayPopupContent(popup.getSelectedFeature());
+            });
+            //when the selection is cleared remove the popup content from the side panel. 
+            connect.connect(popup, "onClearFeatures", function() {
+                //dom.byId replaces dojo.byId
+                dom.byId("featureCount").innerHTML = "Click to select feature(s)";
+                //registry.byId replaces dijit.byId
+                registry.byId("rightPane").set("content", "");
+                domUtils.hide(dom.byId("pager"));
+            });
+            //When features are associated with the  map's info window update the sidebar with the new content. 
+            connect.connect(popup, "onSetFeatures", function() {
+                displayPopupContent(popup.getSelectedFeature());
+                //enable navigation if more than one feature is selected 
+                popup.features.length > 1 ? domUtils.show(dom.byId("pager")) : domUtils.hide(dom.byId("pager"));
+            });
+        }
+        function populateList(results) {
+			//console.log(results)
+            //Populate the dropdown list box with unique values  
+            var zone;
+            var values = [];
+            var testVals = {};
+            //Add option to display all zoning types to the dropdown list   
+            //values.push({
+            //   name: "ALL"
+            //})
+            var features = results.features;
+            dojo.forEach(features, function(feature) {
+                zone = feature.attributes.SponProjTitle;
+                if (!testVals[zone]) {
+                    testVals[zone] = true;
+                    values.push({
+                        name: zone
+                    });
+                }
+            });
+			
+			values.sort();
+			
+            var dataItems = {
+                identifier: 'name',
+                label: 'name',
+                items: values
+            };
+			console.log(dataItems)
+            var store = new dojo.store.Memory({
+                data: dataItems
+            });
+            dijit.byId("mySelect").store = store;
+        }
+        // this replaces your applyLayerDef() function
+        test = dijit.byId("mySelect").on("change", function() {
+            //Filter the layer to display only the selected zoning types 
+            var findTask = new esri.tasks.FindTask("http://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/TIP15_18/FeatureServer/0");
+            //Create the find parameters 
+            var findParams = new esri.tasks.FindParameters();
+            findParams.returnGeometry = true;
+            findParams.layerIds = [0];
+            findParams.searchFields = ["SponProjTitle"];
+            findParams.outSpatialReference = map.spatialReference;
+            //Find and zoom to current project
+            var SponProjTitle = dijit.byId("mySelect").value;
+            findParams.searchText = SponProjTitle;
+            findTask.execute(findParams, selectFeatureAndZoom);
+        });
+        Tooltip.defaultPosition = ["below"];
+        Tooltip.show("this is a tool tip", test.domNode);
+        function selectFeatureAndZoom(results) {
+            //This function works with an array of FindResult that the task returns 
+            map.graphics.clear();
+            //Symbol for Selected Feature 
+            var symbol = new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([255, 0, 0]), 4);
+            //Add Selected Feature to Map  
+            var items = dojo.map(results, function(result) {
+                var graphic = result.feature;
+                graphic.setInfoTemplate(infoTemplate);
+                var content2 = graphic.getContent()
+                registry.byId("rightPane").set("content", content2);
+                graphic.setSymbol(symbol);
+                map.graphics.add(graphic);
+                return result.feature.attributes;
+            });
+            var selectedFeature;
+            var selectedFeatureExtent;
+            //loop through graphics, get the first one (there should only be one)
+            dojo.forEach(map.graphics.graphics, function(graphic) {
+                selectedFeature = graphic;
+                return;
+            });
+            selectedFeatureExtent = selectedFeature.geometry.getExtent();
+            selectedFeatureExtent = selectedFeatureExtent.expand(1.3);
+            map.setExtent(selectedFeatureExtent);
+			loadDataGrid(selectedFeature)
+        }
+        function resizeMap() {
+            //Handle browser resize  
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                map.resize();
+                map.reposition();
+            }, 800);
+        }
+		function showLoading() { 
+          esri.show(loading); 
+          map.disableMapNavigation(); 
+          map.hideZoomSlider(); 
+        } 
+ 
+        function hideLoading(error) { 
+          esri.hide(loading); 
+          map.enableMapNavigation(); 
+          map.showZoomSlider(); 
+         
+        } 
+		
+		//function getValidate (item) { 
+        //                console.log("got here"); 
+        //                alert("hello?"); 
+         //       } 
+		
+		
+		
+        function loadDataGrid(projectGraphic) {
+            var relatedQuery = new RelationshipQuery();
+            relatedQuery.outFields = ["*"];
+            relatedQuery.relationshipId = 0;
+            graphicAttributes = projectGraphic.attributes;
+            relatedQuery.objectIds = [graphicAttributes.OBJECTID_12_13];
+            tipProjs.queryRelatedFeatures(relatedQuery, function(relatedRecords) {
+                var fset = relatedRecords[graphicAttributes.OBJECTID_12_13];
+                var items = [];
+                for (var i = 0, il = fset.features.length; i < il; i++) {
+                    items.push(fset.features[i].attributes);
+                }
+                //Create data object to be used in store
+                var dataItems = {
+                    identifier: "OBJECTID", //This field needs to have unique values
+                    label: "OBJECTID",
+                    items: items
+                };
+				
+                //Create data store and bind to grid.
+                var store = new ItemFileReadStore({
+                    data: dataItems
+                });
+                registry.byId("grid").set("store", store);
+                grid.setQuery({
+                    OBJECTID: '*'
+                });
+				
+				grid.formatDate = function(colIndex, item){
+					//console.log("got here");
+        
+    };
+            });
+        };
+    });
+});
+//this function must be outside the require function (AMD stuff) for the html to be able to call it
+function formatCost (Cost) { 	
+		//console.log(Cost);
+		//console.log("%s", "got here");
+		return "$" + Cost.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");     
+                }
+				
+			
+</script>
+
+	<script>
+		(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+ 
+		ga('create', 'UA-10500475-1', 'auto');
+		ga('send', 'pageview');
+ 
+	</script> 
+
+
+</head>
+
+<body class="claro">
+    <div id = "BorderContainer" data-dojo-type="dijit/layout/BorderContainer" data-dojo-props="gutters:true, design:'header'" style="width:100%;height:100%;">
+      <div data-dojo-type="dijit/layout/ContentPane"  id="header" data-dojo-props="region:'top'" ><b>PSRC 2015-2018 Regional TIP Map *</b> </div>
+     
+	<div id="img"><img src="http://www.psrc.org/assets/2952/psrclogocolorsmall.gif"></div>
+	 <div id="map" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'center'">
+	   
+	   
+	
+	  <select id="mySelect"
+			
+             dojotype="dijit.form.ComboBox"  
+             style="width:589px;font-size:14px;"  
+             autoComplete="true"  
+             forceValidOption="false" 
+             value="Select or Type Project Title"></select>
+			 
+	 <button id="buttonOne" data-dojo-type="dijit.form.Button" style="font-size:14px;" type="button">How to use
+    <script type="dojo/method" data-dojo-event="onClick" data-dojo-args="evt">
+        // Show the Dialog:
+        dijit.byId("dialogOne").show();
+    </script>
+</button>
+	  
+	  </div>
+	  <div id="BasemapToggle"></div>
+	  <div id="HomeButton"></div>
+      <div id="rightPane" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'right'"><b>Getting Started:</b><br/><br/>TIP projects are shown in blue. Click on any part of a project line segment to find more information. You can add or remove additional data layers in the left hand panel. </b><br/><br/> * Updated as of the 16-09 TIP amendment.
+	  </div>
+      
+      
+    <div dojotype="dijit.layout.ContentPane" id="leftPane" region="left"  > 
+         
+        <div dojoType="dijit.layout.AccordionContainer"> 
+          <div dojoType="dijit.layout.ContentPane"  id="legendPane" title="Legend" >  
+            <div id="legendDiv"></div> 
+          </div> 
+          <div dojoType="dijit.layout.ContentPane"  title="Data Layers" selected="true"> 
+            <span style="padding:0px 0;"> <b>Click to toggle the visibility of Data Layers</b></span> 
+            <div id="toggle" style="padding: 6px 0px;" ></div> 
+          </div> 
+        </div> 
+      
+      </div> 
+   
+    <div id="bottomPane" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'bottom'"> <b>Financial Data</b>
+		<table data-dojo-type="dojox.grid.DataGrid" data-dojo-id="grid" id="grid" data-dojo-props="rowsPerPage:'5', rowSelector:'5px'" style="height:250px; width:100%"> 
+         <thead> 
+            <tr> 
+                <th field="Phase" width="100%">Phase</th>
+				<th field="Year" width="100%">Year</th>
+				<th field="FedFundSource" width="100%">Funding Type</th>
+				<th field="FedFundAmount" width="100%" formatter= "formatCost" >Federal Funding</th>
+				<th field="StateFundAmount" width="100%" formatter= "formatCost" >State Funding</th>
+				<th field="LocalFundAmount" width="100%" formatter= "formatCost" >Local Funding</th>
+				<th field="SponsorObDateTxt" width="100%">Projected Obligation Date</th>
+            </tr> 
+         </thead> 
+        </table> 
+      </div> 
+   
+   <img id="loadingImg" src="/assets/14872/ajax-loader2.gif” style="position:absolute; right:50%; top:50%; z-index:100;" />
+   
+ <div id="dialogOne" data-dojo-type="dijit.Dialog" title="Welcome to PSRC's 2015-2018 Regional TIP Web Map">
+    <div data-dojo-type="dijit.layout.TabContainer" style="width: 650px; height: 575px; font-size:14px">
+        <div data-dojo-type="dijit.layout.ContentPane" title="<b>About</b>">This map displays transportation projects from the 2015-18 Regional TIP. Projects like bus replacements are not viewable on a map. A complete list of projects is available here <a href="http://www.psrc.org/transportation/tip">http://www.psrc.org/transportation/tip.</a>
+																	<br/><br/>
+																	<b>Instructions:</b><br/>
+																	Projects are shown in blue. Click on any part of a project line for more information. When a project is selected it will turn dark red and the project title, sponsoring agency, description, and total project cost will appear on the right. Financial details will appear below the map. <br/><br/>
+																	<b>Features:</b><br/>
+																	<u>Context information available on the map</u><br/>
+																	To view projects in the contexts of other important geographical features use the left panel to select which types of data you would like to see on the map.<br/><br/>
+																	<u>Legend</u><br/>
+																	Use the legend to identify the information displayed on the map.<br/><br/>
+																	<u>Zoom </u><br/>
+																	Zoom closer to a project by using the mouse wheel or the plus and minus icons located in the left hand corner of the map. To return to the original view, click on the home button.  <br/><br/>
+																	<u>Satellite View</u><br/>
+																	You can toggle between open streets view and satellite view by hitting the button between the plus and minus icons and home button.  <br/><br/>
+																	<u>Search</u><br/>
+																	You can search by projects by name or sponsor by using the drop down menu.<br/><br/>													
+																	</div>
+        <div data-dojo-type="dijit.layout.ContentPane" title="<b>Data Information</b>">Below is a brief description of each data layer in the TIP web map.<br/><br/>
+																	<u>Congestion-Morning</u><br/>
+																	This data layer shows the average level of congestion during AM peak travel hours. Congestion is measured as a ratio of average traffic volume to roadway capacity.  <br/><br/>
+																	<u>Congestion-Evening</u><br/>
+																	This data layer shows the average level of congestion during PM peak travel hours. Congestion is measured as a ratio of average traffic volume to roadway capacity.<br/><br/>
+																	<u>Freight Routes</u><br/>
+																	This layer shows all T1 and T2 freight routes. These are the most frequently used routes by freight traffic. <br/><br/>
+																	<u>Concentrations of Poverty</u><br/>
+																	This layer displays concentrations of poverty at the census tract level. Tracts were assigned a poverty classification if they had greater than the regional average of residents living at or below the US Department of Health and Human Services Poverty Guidelines, 10.1 percent. For more information see Appendix F of the 2015-2018 Regional TIP located at: <a href="http://www.psrc.org/transportation/tip">http://www.psrc.org/transportation/tip.</a> <br/><br/>
+																	<u>Minority Population</u><br/>
+																	This layer displays areas of high concentration of minority populations at the census block level. Blocks were classified as a minority block if the minority portion of the population exceeds the regional rate of 31.2 percent. For more information see Appendix F of the 2015-2018 TIP located at: <a href="http://www.psrc.org/transportation/tip"> http://www.psrc.org/transportation/tip.</a><br/><br/>
+																	<u>Regional Growth Centers</u><br>
+																	This layer displays the designated Regional Growth Centers. Regional Growth Centers are identified for housing and employment growth.<br/><br/>
+																	<u>Manufacturing Industrial Centers</u><br/>
+																	This layer displays the designated regional Manufacturing and Industrial Centers.  Manufacturing and Industrial Centers are areas of intensive manufacturing and/or industrial activity and are identified as locations for increased employment.<br/><br/>
+																	<u>Military Bases</u><br/>
+																	This layer displays the military bases in the central Puget Sound Region.
+																	
+																	
+																	
+																	
+																	
+																	</div>
+    </div>
+</div>
+
+   
+   </div>
+   
+   
+   
+</body>
+
+</html>
